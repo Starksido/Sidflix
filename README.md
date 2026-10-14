@@ -1,5 +1,7 @@
 # Sidflix
 
+All in one streaming.
+
 Next.js (App Router, TypeScript, Tailwind CSS v4) with Better Auth, Drizzle ORM and Postgres on Neon.
 
 ## Setup
