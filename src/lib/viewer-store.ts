@@ -167,8 +167,8 @@ export function playTitle(title: Title) {
     return;
   }
 
-  // Archive films play here; set before updateWatching so its emit opens the player.
-  const playsHere = title.kind === "film" && archiveIdentifier(title) !== null;
+  // Library and Archive films play here; set before updateWatching so its emit opens the player.
+  const playsHere = title.kind === "film" && (title.video !== undefined || archiveIdentifier(title) !== null);
   if (playsHere) nowPlaying = title;
 
   updateWatching(activeProfileId, (entries) => {

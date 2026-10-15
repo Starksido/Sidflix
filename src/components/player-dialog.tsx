@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { archiveIdentifier, formatRuntime, formatViewers, type Title } from "@/lib/catalog";
 import { closePlayer, useNowPlaying } from "@/lib/viewer-store";
 
 // Titles play in their source's official embed player: Twitch channels in Twitch's,
 // Internet Archive films in the Archive's. Twitch requires the embedding site's
-// hostname as `parent`, so its URL is built in the browser.
+// hostname as `parent`, so its URL is built in the browser. Videos from your own
+// library are plain video files and play in the browser's built-in player.
 
 export function PlayerDialog() {
   const item = useNowPlaying();
@@ -30,6 +31,20 @@ export function PlayerDialog() {
     );
   }
 
+  if (item.video) {
+    return (
+      <Player
+        key={item.id}
+        title={item}
+        src={item.video}
+        media="video"
+        frameTitle={item.title}
+        details={`${item.year} · ${formatRuntime(item.minutes)} · Your library`}
+        sourceLabel="Open video file"
+      />
+    );
+  }
+
   const identifier = archiveIdentifier(item);
   if (!identifier) return null;
   return (
@@ -47,17 +62,21 @@ export function PlayerDialog() {
 function Player({
   title,
   src,
+  media = "frame",
   frameTitle,
   details,
   sourceLabel,
 }: {
   title: Title;
   src: string;
+  /** "frame" embeds a source's player page; "video" plays a video file directly. */
+  media?: "frame" | "video";
   frameTitle: string;
   details: string;
   sourceLabel: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [videoFailed, setVideoFailed] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -79,13 +98,30 @@ function Player({
       }}
       className="bg-surface-1 text-fg m-auto w-[calc(100%-2rem)] max-w-5xl overflow-hidden rounded-xl p-0 shadow-2xl shadow-black/60 ring-1 ring-white/10 backdrop:bg-black/80 backdrop:backdrop-blur-sm"
     >
-      <iframe
-        src={src}
-        title={frameTitle}
-        allow="autoplay; fullscreen; picture-in-picture"
-        allowFullScreen
-        className="aspect-video w-full bg-black"
-      />
+      {media === "frame" ? (
+        <iframe
+          src={src}
+          title={frameTitle}
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          className="aspect-video w-full bg-black"
+        />
+      ) : videoFailed ? (
+        <div className="text-fg-muted grid aspect-video w-full place-items-center bg-black px-6 text-center text-sm">
+          This video couldn&rsquo;t be played. Check that its link in videos.json works and that it&rsquo;s an MP4
+          (H.264) or WebM file.
+        </div>
+      ) : (
+        <video
+          src={src}
+          aria-label={frameTitle}
+          controls
+          autoPlay
+          playsInline
+          onError={() => setVideoFailed(true)}
+          className="aspect-video w-full bg-black"
+        />
+      )}
       <div className="flex items-start justify-between gap-4 px-4 py-3 md:px-5 md:py-4">
         <div className="min-w-0">
           <h2 id="player-title" className="font-display truncate text-lg font-semibold tracking-tight">

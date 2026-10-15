@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
       new URL("https://r2.thesportsdb.com/images/**"),
       new URL("https://www.thesportsdb.com/images/**"),
       new URL("https://static-cdn.jtvnw.net/previews-ttv/**"),
+      // Posters for your own library, stored in your video repository.
+      new URL("https://raw.githubusercontent.com/**"),
     ],
   },
   turbopack: {

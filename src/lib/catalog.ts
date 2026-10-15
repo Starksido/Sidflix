@@ -40,6 +40,8 @@ export type FilmTitle = BaseTitle & {
   year: number;
   minutes: number;
   director?: string;
+  /** Direct link to a video file, for films from your own library. */
+  video?: string;
 };
 
 export type LiveEvent = BaseTitle & {
@@ -544,6 +546,8 @@ export type HomeCatalog = {
   rails: Record<Niche, Title[]>;
   featured: { id: string; trailer?: Trailer }[];
   topTen: string[];
+  /** Your own videos (src/lib/sources/library.ts). Empty when no library is linked. */
+  library: FilmTitle[];
   /** Genre rows of Archive films, after Indie films. Empty when the Archive is down. */
   genreRails: { genre: FilmGenre; items: FilmTitle[] }[];
   /** Every title the client may need to resolve, including those in watch history. */

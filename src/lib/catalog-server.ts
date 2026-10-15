@@ -12,6 +12,7 @@ import {
   type Title,
 } from "@/lib/catalog";
 import { getArchiveGenre, getFilmsFromArchive } from "@/lib/sources/archive";
+import { getLibraryFilms } from "@/lib/sources/library";
 import { getEventsFromSportsDb } from "@/lib/sources/sportsdb";
 import { getAnimeFromTmdb } from "@/lib/sources/tmdb";
 import { getChannelsFromTwitch } from "@/lib/sources/twitch";
@@ -52,7 +53,8 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
   // Bounds how long a failed source keeps its niche on demo titles.
   cacheLife("minutes");
 
-  const [anime, films, events, channels, ...genreFilms] = await Promise.all([
+  const [library, anime, films, events, channels, ...genreFilms] = await Promise.all([
+    settle("Your library", () => getLibraryFilms()),
     settle("TMDB", () => getAnimeFromTmdb()),
     settle("Internet Archive", () => getFilmsFromArchive()),
     settle("TheSportsDB", () => getEventsFromSportsDb()),
@@ -96,9 +98,9 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
 
   const titles = new Map<string, Title>();
   const genreTitles = genreRails.flatMap((row) => row.items);
-  for (const title of [...Object.values(rails).flat(), ...genreTitles, ...demoTitles]) {
+  for (const title of [...(library ?? []), ...Object.values(rails).flat(), ...genreTitles, ...demoTitles]) {
     if (!titles.has(title.id)) titles.set(title.id, title);
   }
 
-  return { rails, featured, topTen, genreRails, titles: [...titles.values()] };
+  return { rails, featured, topTen, library: library ?? [], genreRails, titles: [...titles.values()] };
 }
