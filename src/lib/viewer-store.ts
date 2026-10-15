@@ -2,11 +2,12 @@
 
 import { useSyncExternalStore } from "react";
 import {
+  archiveIdentifier,
   isAllowed,
   profiles,
   seedWatching,
   type Maturity,
-  type Channel,
+  type Playable,
   type Profile,
   type Title,
   type WatchEntry,
@@ -31,7 +32,7 @@ const initialState: ViewerState = {
 
 let state: ViewerState | null = null;
 let notice: Notice | null = null;
-let nowPlaying: Channel | null = null;
+let nowPlaying: Playable | null = null;
 let noticeId = 0;
 const listeners = new Set<() => void>();
 
@@ -93,7 +94,7 @@ export function dismissNotice(id: number) {
   emit();
 }
 
-export function useNowPlaying(): Channel | null {
+export function useNowPlaying(): Playable | null {
   return useSyncExternalStore(
     subscribe,
     () => nowPlaying,
@@ -147,9 +148,10 @@ function updateWatching(
 }
 
 /**
- * Starts or resumes a title for the active profile. Twitch channels open in the
- * embed player. Films and series have no player yet, so this records about a tenth
- * of the runtime as watched and moves the title to the front of Continue watching.
+ * Starts or resumes a title for the active profile. Twitch channels and Internet
+ * Archive films open in the player dialog. The embedded players don't report
+ * progress, so films and series record about a tenth of the runtime as watched and
+ * move to the front of Continue watching.
  */
 export function playTitle(title: Title) {
   const titleId = title.id;
@@ -164,6 +166,10 @@ export function playTitle(title: Title) {
     notify(`${title.title} is ready to watch once the live player is built.`);
     return;
   }
+
+  // Archive films play here; set before updateWatching so its emit opens the player.
+  const playsHere = title.kind === "film" && archiveIdentifier(title) !== null;
+  if (playsHere) nowPlaying = title;
 
   updateWatching(activeProfileId, (entries) => {
     const existing = entries.find((e) => e.titleId === titleId);
@@ -184,7 +190,7 @@ export function playTitle(title: Title) {
     return rest;
   });
 
-  notify(`Saved your place in ${title.title}.`);
+  if (!playsHere) notify(`Saved your place in ${title.title}.`);
 }
 
 export function removeFromWatching(title: Title) {

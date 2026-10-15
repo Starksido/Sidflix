@@ -1,29 +1,71 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { formatViewers, type Channel } from "@/lib/catalog";
+import { archiveIdentifier, formatRuntime, formatViewers, type Title } from "@/lib/catalog";
 import { closePlayer, useNowPlaying } from "@/lib/viewer-store";
 
-// Twitch channels play in Twitch's official embed player. Twitch requires the
-// embedding site's hostname as `parent`, so the URL is built in the browser.
+// Titles play in their source's official embed player: Twitch channels in Twitch's,
+// Internet Archive films in the Archive's. Twitch requires the embedding site's
+// hostname as `parent`, so its URL is built in the browser.
 
 export function PlayerDialog() {
-  const channel = useNowPlaying();
-  if (!channel?.twitchLogin) return null;
-  return <TwitchPlayer key={channel.id} channel={channel} login={channel.twitchLogin} />;
+  const item = useNowPlaying();
+  if (!item) return null;
+
+  if (item.kind === "channel") {
+    if (!item.twitchLogin) return null;
+    const src = new URL("https://player.twitch.tv/");
+    src.searchParams.set("channel", item.twitchLogin);
+    src.searchParams.set("parent", window.location.hostname);
+    src.searchParams.set("autoplay", "true");
+    return (
+      <Player
+        key={item.id}
+        title={item}
+        src={src.toString()}
+        frameTitle={`${item.host} live on Twitch`}
+        details={`${item.host} playing ${item.game} · ${formatViewers(item.viewers)} watching`}
+        sourceLabel="Open on Twitch"
+      />
+    );
+  }
+
+  const identifier = archiveIdentifier(item);
+  if (!identifier) return null;
+  return (
+    <Player
+      key={item.id}
+      title={item}
+      src={`https://archive.org/embed/${encodeURIComponent(identifier)}`}
+      frameTitle={`${item.title} on the Internet Archive`}
+      details={`${item.year} · ${formatRuntime(item.minutes)} · Public domain`}
+      sourceLabel="Open on Internet Archive"
+    />
+  );
 }
 
-function TwitchPlayer({ channel, login }: { channel: Channel; login: string }) {
+function Player({
+  title,
+  src,
+  frameTitle,
+  details,
+  sourceLabel,
+}: {
+  title: Title;
+  src: string;
+  frameTitle: string;
+  details: string;
+  sourceLabel: string;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     dialogRef.current?.showModal();
+    // showModal focuses the first focusable child, the iframe, and keys pressed in a
+    // cross-origin frame never reach this page, so Escape couldn't close the player.
+    closeRef.current?.focus();
   }, []);
-
-  const src = new URL("https://player.twitch.tv/");
-  src.searchParams.set("channel", login);
-  src.searchParams.set("parent", window.location.hostname);
-  src.searchParams.set("autoplay", "true");
 
   return (
     <dialog
@@ -38,35 +80,33 @@ function TwitchPlayer({ channel, login }: { channel: Channel; login: string }) {
       className="bg-surface-1 text-fg m-auto w-[calc(100%-2rem)] max-w-5xl overflow-hidden rounded-xl p-0 shadow-2xl shadow-black/60 ring-1 ring-white/10 backdrop:bg-black/80 backdrop:backdrop-blur-sm"
     >
       <iframe
-        src={src.toString()}
-        title={`${channel.host} live on Twitch`}
-        allow="autoplay; fullscreen"
+        src={src}
+        title={frameTitle}
+        allow="autoplay; fullscreen; picture-in-picture"
         allowFullScreen
         className="aspect-video w-full bg-black"
       />
       <div className="flex items-start justify-between gap-4 px-4 py-3 md:px-5 md:py-4">
         <div className="min-w-0">
           <h2 id="player-title" className="font-display truncate text-lg font-semibold tracking-tight">
-            {channel.title}
+            {title.title}
           </h2>
-          <p className="text-fg-subtle mt-0.5 truncate text-sm">
-            {channel.host} playing {channel.game} · {formatViewers(channel.viewers)} watching
-          </p>
+          <p className="text-fg-subtle mt-0.5 truncate text-sm">{details}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {channel.source && (
+          {title.source && (
             <a
-              href={channel.source.href}
+              href={title.source.href}
               target="_blank"
               rel="noreferrer"
               className="text-fg-muted hover:text-fg hidden rounded-md px-2 py-1.5 text-sm sm:block"
             >
-              Open on Twitch
+              {sourceLabel}
             </a>
           )}
           <button
+            ref={closeRef}
             type="button"
-            autoFocus
             onClick={closePlayer}
             aria-label="Close player"
             className="bg-surface-2 hover:bg-surface-3 grid size-9 place-items-center rounded-full transition-colors"

@@ -40,7 +40,7 @@ export default async function Home() {
         <p className="font-display text-fg-muted text-sm font-bold">Sidflix</p>
         <p className="mt-2 max-w-2xl">
           Anime from TMDB, fixtures and scores from TheSportsDB, live channels from Twitch (played in Twitch&rsquo;s own embed), and
-          public-domain films from the Internet Archive. Sintel and Big Buck Bunny are open movies by
+          public-domain films from the Internet Archive (played in the Archive&rsquo;s own player). Sintel and Big Buck Bunny are open movies by
           the Blender Foundation (CC BY 3.0). Rows whose source isn&rsquo;t connected show fictional
           demo titles. Profiles and watch progress are saved in this browser only.
         </p>

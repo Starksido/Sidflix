@@ -64,6 +64,9 @@ export type Channel = BaseTitle & {
 
 export type Title = SeriesTitle | FilmTitle | LiveEvent | Channel;
 
+/** Titles the player dialog can show: Twitch channels and Internet Archive films. */
+export type Playable = Channel | FilmTitle;
+
 export type Trailer = {
   src: string;
   credit: string;
@@ -588,6 +591,14 @@ export const seedWatching: Record<string, WatchEntry[]> = {
 
 export function isAllowed(maturity: Maturity, max: Maturity): boolean {
   return maturityOrder.indexOf(maturity) <= maturityOrder.indexOf(max);
+}
+
+/**
+ * The Internet Archive identifier of a film from the Archive ("ia-" ids), which
+ * plays in full in the Archive's embed player. Null for every other title.
+ */
+export function archiveIdentifier(title: Pick<Title, "id" | "kind">): string | null {
+  return title.kind === "film" && title.id.startsWith("ia-") ? title.id.slice(3) : null;
 }
 
 /** Minutes of a film or the current episode. */

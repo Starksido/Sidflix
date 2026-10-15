@@ -6,6 +6,14 @@ import { artFromSeed, clip, fetchJson } from "@/lib/sources/util";
 // Feature films from the Internet Archive that carry an explicit public-domain
 // license, so they can be streamed in full. No API key needed.
 
+/** Films released up to this year are public domain in the US. Raise it each January. */
+const PUBLIC_DOMAIN_YEAR = 1930;
+
+// Rip and encoder tags usually mean a re-upload of a commercial release, which an
+// uploader's public-domain tag doesn't make true. Old films are digitised from
+// Blu-rays too, so the tags only disqualify films newer than PUBLIC_DOMAIN_YEAR.
+const RIP_TAGS = /dvd-?rip|blu-?ray|br-?rip|web-?rip|web-?dl|hd-?rip|x-?26[45]|hevc|yify|\byts\b/i;
+
 type Doc = {
   identifier: string;
   title?: string;
@@ -42,6 +50,7 @@ function toTitle(doc: Doc): FilmTitle | null {
   const year = Number(doc.year);
   const synopsis = clip(plainText(doc.description), 220);
   if (!doc.title || !minutes || !year || !synopsis) return null;
+  if (year > PUBLIC_DOMAIN_YEAR && RIP_TAGS.test(`${doc.identifier} ${doc.title}`)) return null;
   return {
     id: `ia-${doc.identifier}`,
     kind: "film",
