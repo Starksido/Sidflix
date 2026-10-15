@@ -63,16 +63,17 @@ function toTitle(doc: Doc): FilmTitle | null {
   };
 }
 
-/** Most-watched public-domain feature films on the Internet Archive. */
-export async function getFilmsFromArchive(limit = 12): Promise<FilmTitle[]> {
-  "use cache";
-  cacheLife("days");
-  cacheTag("source:archive");
-
+/** Public-domain feature films, most downloaded first, narrowed by an optional extra clause. */
+async function queryFilms(limit: number, extraClause?: string): Promise<FilmTitle[]> {
   const url = new URL("https://archive.org/advancedsearch.php");
   url.searchParams.set(
     "q",
-    "collection:feature_films AND mediatype:movies AND licenseurl:*publicdomain* AND year:[1900 TO 2030]",
+    [
+      "collection:feature_films AND mediatype:movies AND licenseurl:*publicdomain* AND year:[1900 TO 2030]",
+      extraClause,
+    ]
+      .filter(Boolean)
+      .join(" AND "),
   );
   for (const field of ["identifier", "title", "year", "runtime", "description", "downloads"]) {
     url.searchParams.append("fl[]", field);
@@ -86,4 +87,29 @@ export async function getFilmsFromArchive(limit = 12): Promise<FilmTitle[]> {
     .map(toTitle)
     .filter((t) => t !== null)
     .slice(0, limit);
+}
+
+/** Most-watched public-domain feature films on the Internet Archive. */
+export async function getFilmsFromArchive(limit = 12): Promise<FilmTitle[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("source:archive");
+  return queryFilms(limit);
+}
+
+/** Public-domain feature films whose title contains every word of the query. */
+export async function searchArchiveFilms(query: string, limit = 8): Promise<FilmTitle[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("source:archive");
+
+  // Plain lowercase words only, so the query can't change the search syntax around
+  // it: lowercase AND/OR/NOT are terms, and a leading "-" would negate.
+  const words = query
+    .toLowerCase()
+    .split(" ")
+    .map((w) => w.replace(/[^\p{L}\p{N}'-]/gu, "").replace(/^-+/, ""))
+    .filter(Boolean);
+  if (words.length === 0) return [];
+  return queryFilms(limit, `title:(${words.join(" AND ")})`);
 }

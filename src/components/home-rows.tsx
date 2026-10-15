@@ -12,7 +12,8 @@ export function ContinueWatchingRow() {
   const profile = useActiveProfile();
   const entries = (watching[profile.id] ?? [])
     .flatMap((entry) => {
-      const title = getTitle(entry.titleId);
+      // The saved snapshot covers titles the home catalogue no longer has, e.g. from search.
+      const title = getTitle(entry.titleId) ?? entry.title;
       return title ? [{ entry, title }] : [];
     })
     .filter(({ title }) => isAllowed(title.maturity, profile.maxMaturity));

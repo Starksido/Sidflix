@@ -1,9 +1,10 @@
 "use client";
 
+import Form from "next/form";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { nicheHue } from "@/components/cards";
 import { ProfileSwitcher } from "@/components/profile-switcher";
-import { nicheOrder, niches, type Niche } from "@/lib/catalog";
+import { nicheHue, nicheOrder, niches, type Niche } from "@/lib/catalog";
 
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
@@ -42,20 +43,43 @@ export function SiteHeader() {
       }`}
     >
       <div className="px-gutter flex h-16 items-center gap-6 md:h-18">
-        <a href="#top" className="flex shrink-0 items-center gap-2 rounded-md" aria-label="Sidflix home">
+        <Link href="/#top" className="flex shrink-0 items-center gap-2 rounded-md" aria-label="Sidflix home">
           <span aria-hidden className="bg-accent grid size-7 place-items-center rounded-md text-black">
             <svg viewBox="0 0 20 20" className="ml-0.5 size-3.5 fill-current">
               <path d="M5 3.5v13l11-6.5z" />
             </svg>
           </span>
           <span className="font-display text-xl font-extrabold tracking-tight">Sidflix</span>
-        </a>
+        </Link>
 
         <nav aria-label="Browse" className="hidden md:block">
           <NicheLinks activeNiche={activeNiche} />
         </nav>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <Form action="/search" role="search" className="hidden md:block">
+            <label htmlFor="header-q" className="sr-only">
+              Search Sidflix
+            </label>
+            <input
+              id="header-q"
+              name="q"
+              type="search"
+              placeholder="Search"
+              autoComplete="off"
+              className="placeholder:text-fg-subtle w-40 rounded-full bg-white/10 px-4 py-1.5 text-sm ring-1 ring-white/10 transition-[width] focus:w-60 focus:ring-white/40 focus:outline-none lg:w-48"
+            />
+          </Form>
+          <Link
+            href="/search"
+            aria-label="Search"
+            className="grid size-9 place-items-center rounded-full hover:bg-white/10 md:hidden"
+          >
+            <svg viewBox="0 0 20 20" className="size-4.5" aria-hidden>
+              <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="2" />
+              <path d="M13 13l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </Link>
           <ProfileSwitcher />
         </div>
       </div>
@@ -74,8 +98,9 @@ function NicheLinks({ activeNiche, compact }: { activeNiche: Niche | null; compa
         const active = niche === activeNiche;
         return (
           <li key={niche}>
-            <a
-              href={`#${niche}`}
+            <Link
+              // From the search page these go home; on home they're same-page jumps.
+              href={`/#${niche}`}
               aria-current={active ? "location" : undefined}
               className={`relative flex items-center gap-2 text-sm font-medium transition-colors ${
                 compact
@@ -89,7 +114,7 @@ function NicheLinks({ activeNiche, compact }: { activeNiche: Niche | null; compa
                 style={{ background: nicheHue[niche] }}
               />
               {niches[niche].label}
-            </a>
+            </Link>
           </li>
         );
       })}

@@ -55,6 +55,7 @@ function toTitle(event: Event, now: number): LiveEvent | null {
     status: upcoming ? (time ? `Starts ${time} UTC` : "Later today") : status,
     isLive: !upcoming,
     score: hasScore ? `${event.intHomeScore}–${event.intAwayScore}` : undefined,
+    startsAt: Number.isFinite(startsAt) ? startsAt : undefined,
     synopsis: [event.strLeague, event.strVenue].filter(Boolean).join(" at ") + ".",
     art: {
       from: artFromSeed(home).from,
@@ -88,7 +89,23 @@ export async function getEventsFromSportsDb(limit = 8): Promise<LiveEvent[]> {
     .flatMap((r) => (r.status === "fulfilled" ? (r.value.events ?? []) : []))
     .map((e) => toTitle(e, now))
     .filter((t) => t !== null)
-    // Live first; upcoming "Starts HH:MM UTC" labels sort by kick-off time.
-    .sort((a, b) => Number(b.isLive) - Number(a.isLive) || a.status.localeCompare(b.status))
+    // Live first, then by kick-off.
+    .sort(
+      (a, b) =>
+        Number(b.isLive) - Number(a.isLive) ||
+        (a.startsAt ?? Infinity) - (b.startsAt ?? Infinity),
+    )
     .slice(0, limit);
+}
+
+/**
+ * Today's events whose name, teams or league contain the query. Filters the cached
+ * fixtures: the free key's event search mostly returns finished matches.
+ */
+export async function searchTodaysEvents(query: string): Promise<LiveEvent[]> {
+  const needle = query.toLowerCase();
+  const events = await getEventsFromSportsDb(40);
+  return events.filter((e) =>
+    [e.title, e.competition].some((text) => text.toLowerCase().includes(needle)),
+  );
 }

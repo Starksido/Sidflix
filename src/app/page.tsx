@@ -1,26 +1,13 @@
-import { ChannelCard, LiveCard, PosterCard, nicheHue } from "@/components/cards";
 import { CatalogProvider } from "@/components/catalog-provider";
 import { Hero } from "@/components/hero";
 import { ContinueWatchingRow, TopTenRow } from "@/components/home-rows";
+import { NicheCards } from "@/components/niche-cards";
 import { NoticeToast } from "@/components/notice-toast";
+import { PlayerDialog } from "@/components/player-dialog";
 import { Rail } from "@/components/rail";
 import { SiteHeader } from "@/components/site-header";
-import { nicheOrder, niches, type Niche, type Title } from "@/lib/catalog";
+import { nicheHue, nicheOrder, niches } from "@/lib/catalog";
 import { getHomeCatalog } from "@/lib/catalog-server";
-
-function NicheCards({ niche, items }: { niche: Niche; items: Title[] }) {
-  if (niche === "sports") {
-    return items
-      .filter((t) => t.kind === "live")
-      .map((event) => <LiveCard key={event.id} event={event} />);
-  }
-  if (niche === "gaming") {
-    return items
-      .filter((t) => t.kind === "channel")
-      .map((channel) => <ChannelCard key={channel.id} channel={channel} />);
-  }
-  return items.map((title) => <PosterCard key={title.id} title={title} />);
-}
 
 export default async function Home() {
   const catalog = await getHomeCatalog();
@@ -52,7 +39,7 @@ export default async function Home() {
       <footer className="px-gutter border-line text-fg-subtle border-t py-10 text-xs leading-relaxed">
         <p className="font-display text-fg-muted text-sm font-bold">Sidflix</p>
         <p className="mt-2 max-w-2xl">
-          Anime from TMDB, fixtures and scores from TheSportsDB, live channels from Twitch, and
+          Anime from TMDB, fixtures and scores from TheSportsDB, live channels from Twitch (played in Twitch&rsquo;s own embed), and
           public-domain films from the Internet Archive. Sintel and Big Buck Bunny are open movies by
           the Blender Foundation (CC BY 3.0). Rows whose source isn&rsquo;t connected show fictional
           demo titles. Profiles and watch progress are saved in this browser only.
@@ -62,6 +49,7 @@ export default async function Home() {
         </p>
       </footer>
       <NoticeToast />
+      <PlayerDialog />
     </>
   );
 }

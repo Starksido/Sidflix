@@ -14,13 +14,21 @@ import { getEventsFromSportsDb } from "@/lib/sources/sportsdb";
 import { getAnimeFromTmdb } from "@/lib/sources/tmdb";
 import { getChannelsFromTwitch } from "@/lib/sources/twitch";
 
-/** Runs a source; null when it is unconfigured, empty or failing, so its niche uses demo titles. */
-async function settle<T>(name: string, load: () => Promise<T[] | null>): Promise<T[] | null> {
+/**
+ * Runs a source; null when it is unconfigured, empty or failing, so the home page's
+ * niche uses demo titles. Failures are logged and reported through `onFail`.
+ */
+export async function settle<T>(
+  name: string,
+  load: () => Promise<T[] | null>,
+  onFail?: () => void,
+): Promise<T[] | null> {
   try {
     const items = await load();
     return items?.length ? items : null;
   } catch (error) {
-    console.warn(`[catalog] ${name} unavailable, showing demo titles:`, error instanceof Error ? error.message : error);
+    console.warn(`[catalog] ${name} unavailable:`, error instanceof Error ? error.message : error);
+    onFail?.();
     return null;
   }
 }

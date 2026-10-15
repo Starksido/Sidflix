@@ -49,6 +49,8 @@ export type LiveEvent = BaseTitle & {
   status: string;
   isLive: boolean;
   score?: string;
+  /** Kick-off as epoch ms, so upcoming events can show the viewer's local time. */
+  startsAt?: number;
 };
 
 export type Channel = BaseTitle & {
@@ -56,6 +58,8 @@ export type Channel = BaseTitle & {
   game: string;
   host: string;
   viewers: number;
+  /** Twitch login, for the official embed player. Absent on demo channels. */
+  twitchLogin?: string;
 };
 
 export type Title = SeriesTitle | FilmTitle | LiveEvent | Channel;
@@ -93,6 +97,14 @@ export const niches: Record<
 };
 
 export const nicheOrder: Niche[] = ["anime", "sports", "indie", "gaming"];
+
+/** Each niche's accent colour token. Lives here, not in a client module, so server pages can read it. */
+export const nicheHue: Record<Niche, string> = {
+  anime: "var(--color-anime)",
+  sports: "var(--color-sports)",
+  indie: "var(--color-indie)",
+  gaming: "var(--color-gaming)",
+};
 
 const titles = [
   // Anime
@@ -543,6 +555,8 @@ export type WatchEntry = {
   /** Series only: season and episode in progress. */
   season?: number;
   episode?: number;
+  /** The title as it was when played, for titles no longer in the home catalogue (e.g. from search). */
+  title?: Title;
 };
 
 /** Starting watch history per profile, before any local changes. */

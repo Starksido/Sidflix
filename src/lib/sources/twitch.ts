@@ -36,6 +36,10 @@ async function getAppToken(): Promise<string> {
   return access_token;
 }
 
+function isPromotable(stream: Stream): boolean {
+  return !stream.is_mature && !EXCLUDED_GAMES.has(stream.game_name);
+}
+
 function toTitle(stream: Stream): Channel {
   return {
     id: `twitch-${stream.user_login}`,
@@ -47,6 +51,7 @@ function toTitle(stream: Stream): Channel {
     game: stream.game_name || "Just Chatting",
     host: stream.user_name,
     viewers: stream.viewer_count,
+    twitchLogin: stream.user_login,
     synopsis: clip(stream.title, 160),
     art: {
       ...artFromSeed(stream.user_login),
@@ -73,8 +78,36 @@ export async function getChannelsFromTwitch(limit = 10): Promise<Channel[] | nul
     { headers: { "Client-Id": clientId, Authorization: `Bearer ${token}` } },
   );
 
+  return data.filter(isPromotable).slice(0, limit).map(toTitle);
+}
+
+/** Live channels matching a query, or null when Twitch credentials are not set. */
+export async function searchTwitchChannels(query: string, limit = 8): Promise<Channel[] | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("source:twitch");
+
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  if (!clientId || !process.env.TWITCH_CLIENT_SECRET) return null;
+
+  const headers = { "Client-Id": clientId, Authorization: `Bearer ${await getAppToken()}` };
+  const search = new URL("https://api.twitch.tv/helix/search/channels");
+  search.searchParams.set("query", query);
+  search.searchParams.set("live_only", "true");
+  search.searchParams.set("first", "20");
+  const { data: matches } = await fetchJson<{ data: { broadcaster_login: string }[] }>(search.toString(), {
+    headers,
+  });
+  if (matches.length === 0) return [];
+
+  // Search results lack viewer counts and the mature flag; the streams endpoint has both.
+  const streams = new URL("https://api.twitch.tv/helix/streams");
+  for (const match of matches) streams.searchParams.append("user_login", match.broadcaster_login);
+  const { data } = await fetchJson<{ data: Stream[] }>(streams.toString(), { headers });
+
   return data
-    .filter((s) => !s.is_mature && !EXCLUDED_GAMES.has(s.game_name))
+    .filter(isPromotable)
+    .sort((a, b) => b.viewer_count - a.viewer_count)
     .slice(0, limit)
     .map(toTitle);
 }

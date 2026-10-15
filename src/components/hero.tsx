@@ -2,16 +2,17 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Artwork } from "@/components/artwork";
-import { MaturityBadge, nicheHue } from "@/components/cards";
+import { EventStatus, MaturityBadge } from "@/components/cards";
 import { useCatalog } from "@/components/catalog-provider";
 import {
   formatRuntime,
   formatViewers,
   isAllowed,
+  nicheHue,
   niches,
   type Title,
 } from "@/lib/catalog";
-import { playTitle, useActiveProfile, useViewerState } from "@/lib/viewer-store";
+import { playTitle, useActiveProfile, useNowPlaying, useViewerState } from "@/lib/viewer-store";
 
 /** How long a feature without a trailer stays up before the carousel moves on. */
 const STILL_DURATION = "9s";
@@ -66,7 +67,9 @@ export function Hero() {
   const current = items[index % items.length];
   const trailer = current && !failed.includes(current.id) ? current.trailer : undefined;
   const wantsMotion = userPlaying ?? !reducedMotion;
-  const running = wantsMotion && inView && pageVisible;
+  // The trailer also pauses while a stream plays in the player dialog.
+  const playerOpen = useNowPlaying() !== null;
+  const running = wantsMotion && inView && pageVisible && !playerOpen;
 
   const show = (next: number) => {
     setIndex((next + items.length) % items.length);
@@ -271,7 +274,8 @@ function HeroFacts({ title }: { title: Title }) {
         <>
           <span>{title.competition}</span>
           <span className="text-fg tabular-nums">
-            {title.score ? `${title.score} at ${title.status}` : title.status}
+            {title.score && `${title.score} at `}
+            <EventStatus event={title} />
           </span>
         </>
       );

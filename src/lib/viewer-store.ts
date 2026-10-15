@@ -6,6 +6,7 @@ import {
   profiles,
   seedWatching,
   type Maturity,
+  type Channel,
   type Profile,
   type Title,
   type WatchEntry,
@@ -30,6 +31,7 @@ const initialState: ViewerState = {
 
 let state: ViewerState | null = null;
 let notice: Notice | null = null;
+let nowPlaying: Channel | null = null;
 let noticeId = 0;
 const listeners = new Set<() => void>();
 
@@ -91,6 +93,20 @@ export function dismissNotice(id: number) {
   emit();
 }
 
+export function useNowPlaying(): Channel | null {
+  return useSyncExternalStore(
+    subscribe,
+    () => nowPlaying,
+    () => null,
+  );
+}
+
+export function closePlayer() {
+  if (!nowPlaying) return;
+  nowPlaying = null;
+  emit();
+}
+
 export function useViewerState(): ViewerState {
   return useSyncExternalStore(subscribe, getState, () => initialState);
 }
@@ -131,14 +147,19 @@ function updateWatching(
 }
 
 /**
- * Starts or resumes a title for the active profile. There is no player yet, so this
- * records about a tenth of the runtime as watched and moves the title to the front
- * of Continue watching.
+ * Starts or resumes a title for the active profile. Twitch channels open in the
+ * embed player. Films and series have no player yet, so this records about a tenth
+ * of the runtime as watched and moves the title to the front of Continue watching.
  */
 export function playTitle(title: Title) {
   const titleId = title.id;
   const { activeProfileId } = getState();
 
+  if (title.kind === "channel" && title.twitchLogin) {
+    nowPlaying = title;
+    emit();
+    return;
+  }
   if (title.kind === "live" || title.kind === "channel") {
     notify(`${title.title} is ready to watch once the live player is built.`);
     return;
@@ -150,15 +171,15 @@ export function playTitle(title: Title) {
     if (!existing) {
       const started: WatchEntry =
         title.kind === "series"
-          ? { titleId, progress: 0.1, season: 1, episode: 1 }
-          : { titleId, progress: 0.1 };
+          ? { titleId, progress: 0.1, season: 1, episode: 1, title }
+          : { titleId, progress: 0.1, title };
       return [started, ...rest];
     }
     const progress = existing.progress + 0.1;
-    if (progress < 0.97) return [{ ...existing, progress }, ...rest];
+    if (progress < 0.97) return [{ ...existing, progress, title }, ...rest];
     // Finished: series move on to the next episode, films leave the row.
     if (title.kind === "series" && existing.episode !== undefined) {
-      return [{ ...existing, progress: 0.02, episode: existing.episode + 1 }, ...rest];
+      return [{ ...existing, progress: 0.02, episode: existing.episode + 1, title }, ...rest];
     }
     return rest;
   });

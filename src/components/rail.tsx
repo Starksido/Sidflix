@@ -49,7 +49,7 @@ export function Rail({
   };
 
   return (
-    <section id={id} aria-labelledby={headingId} className="group/rail relative scroll-mt-24">
+    <section id={id} aria-labelledby={headingId} className="group/rail relative scroll-mt-24 has-[>ul:empty]:hidden">
       <div className="px-gutter mb-3 flex items-end justify-between gap-4 md:mb-4">
         <div>
           <h2

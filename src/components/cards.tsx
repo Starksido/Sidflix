@@ -1,10 +1,11 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { Artwork } from "@/components/artwork";
 import {
   formatRuntime,
   formatViewers,
+  nicheHue,
   runtimeMinutes,
   type Channel,
   type LiveEvent,
@@ -13,13 +14,6 @@ import {
   type WatchEntry,
 } from "@/lib/catalog";
 import { playTitle, removeFromWatching, useIsAllowed } from "@/lib/viewer-store";
-
-export const nicheHue: Record<Niche, string> = {
-  anime: "var(--color-anime)",
-  sports: "var(--color-sports)",
-  indie: "var(--color-indie)",
-  gaming: "var(--color-gaming)",
-};
 
 const frame =
   "relative overflow-hidden rounded-lg bg-surface-2 ring-1 ring-white/10 transition-shadow duration-200 group-hover:ring-2 group-hover:ring-(--hue) group-focus-visible:ring-2 group-focus-visible:ring-(--hue)";
@@ -34,6 +28,22 @@ export function MaturityBadge({ maturity }: { maturity: Title["maturity"] }) {
       {maturity === "all" ? "All ages" : maturity}
     </span>
   );
+}
+
+const subscribeNothing = () => () => {};
+
+/**
+ * Match clock for live events. Upcoming ones show kick-off in the viewer's own time
+ * zone after hydration; the server-rendered label (UTC) is shown until then.
+ */
+export function EventStatus({ event }: { event: LiveEvent }) {
+  const hydrated = useSyncExternalStore(subscribeNothing, () => true, () => false);
+  if (event.isLive || event.startsAt === undefined || !hydrated) return event.status;
+
+  const start = new Date(event.startsAt);
+  const time = start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  if (start.toDateString() === new Date().toDateString()) return `Starts ${time}`;
+  return `Starts ${start.toLocaleDateString(undefined, { weekday: "short" })} ${time}`;
 }
 
 function Meta({ children }: { children: ReactNode }) {
@@ -157,7 +167,7 @@ export function LiveCard({ event }: { event: LiveEvent }) {
         <div className={frame}>
           <Artwork title={event} className="aspect-video" />
           <div className="absolute top-2.5 left-2.5 flex gap-1.5">
-            <LiveBadge live={event.isLive}>{event.isLive ? "Live" : event.status}</LiveBadge>
+            <LiveBadge live={event.isLive}>{event.isLive ? "Live" : <EventStatus event={event} />}</LiveBadge>
             {event.isLive && <LiveBadge live={false}>{event.status}</LiveBadge>}
           </div>
           {event.score && (

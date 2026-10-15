@@ -11,6 +11,8 @@ const IMAGES = "https://image.tmdb.org/t/p";
 
 type DiscoverResponse = { results: { id: number }[] };
 
+type SearchResponse = { results: { id: number; genre_ids: number[]; original_language: string }[] };
+
 type TvDetails = {
   id: number;
   name: string;
@@ -44,6 +46,10 @@ function request(path: string, key: string) {
   return fetchJson<unknown>(url.toString(), {
     headers: bearer ? { Authorization: `Bearer ${key}` } : undefined,
   });
+}
+
+function getTvDetails(id: number, key: string) {
+  return request(`/tv/${id}?append_to_response=content_ratings`, key) as Promise<TvDetails>;
 }
 
 function toTitle(tv: TvDetails): SeriesTitle | null {
@@ -84,14 +90,31 @@ export async function getAnimeFromTmdb(limit = 12): Promise<SeriesTitle[] | null
     key,
   )) as DiscoverResponse;
 
-  const details = await Promise.all(
-    discover.results
-      .slice(0, limit + 4)
-      .map((r) => request(`/tv/${r.id}?append_to_response=content_ratings`, key) as Promise<TvDetails>),
-  );
+  const details = await Promise.all(discover.results.slice(0, limit + 4).map((r) => getTvDetails(r.id, key)));
 
   return details
     .map(toTitle)
     .filter((t) => t !== null)
     .slice(0, limit);
+}
+
+/** Japanese animated series matching a query, or null when TMDB_API_KEY is not set. */
+export async function searchAnimeOnTmdb(query: string, limit = 8): Promise<SeriesTitle[] | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("source:tmdb");
+
+  const key = process.env.TMDB_API_KEY;
+  if (!key) return null;
+
+  const search = (await request(
+    `/search/tv?query=${encodeURIComponent(query)}&include_adult=false`,
+    key,
+  )) as SearchResponse;
+
+  // Same niche as the anime rail. Search results have no rating, so each needs its details.
+  const anime = search.results.filter((r) => r.genre_ids.includes(16) && r.original_language === "ja");
+  const details = await Promise.all(anime.slice(0, limit).map((r) => getTvDetails(r.id, key)));
+
+  return details.map(toTitle).filter((t) => t !== null);
 }
