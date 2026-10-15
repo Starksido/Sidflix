@@ -41,8 +41,7 @@ export async function searchCatalog(raw: string | null | undefined): Promise<Sea
 
   // Anything in the home page's rails comes first, so a search never misses what's on
   // screen (including demo rows for sources that aren't connected).
-  const onHome = Object.values(home.rails)
-    .flat()
+  const onHome = [...Object.values(home.rails).flat(), ...home.genreRails.flatMap((row) => row.items)]
     .filter((t) => t.title.toLowerCase().includes(query));
 
   const byId = new Map<string, Title>();

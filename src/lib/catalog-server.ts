@@ -3,13 +3,15 @@ import { cacheLife } from "next/cache";
 import {
   demoTitles,
   featured as demoFeatured,
+  filmGenreOrder,
   titlesInNiche,
   topTen as demoTopTen,
+  type FilmTitle,
   type HomeCatalog,
   type Niche,
   type Title,
 } from "@/lib/catalog";
-import { getFilmsFromArchive } from "@/lib/sources/archive";
+import { getArchiveGenre, getFilmsFromArchive } from "@/lib/sources/archive";
 import { getEventsFromSportsDb } from "@/lib/sources/sportsdb";
 import { getAnimeFromTmdb } from "@/lib/sources/tmdb";
 import { getChannelsFromTwitch } from "@/lib/sources/twitch";
@@ -33,6 +35,9 @@ export async function settle<T>(
   }
 }
 
+/** Fewest films a genre row needs to be worth showing. */
+const MIN_GENRE_ROW = 4;
+
 function interleave<T>(a: readonly T[], b: readonly T[]): T[] {
   const out: T[] = [];
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
@@ -47,11 +52,12 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
   // Bounds how long a failed source keeps its niche on demo titles.
   cacheLife("minutes");
 
-  const [anime, films, events, channels] = await Promise.all([
+  const [anime, films, events, channels, ...genreFilms] = await Promise.all([
     settle("TMDB", () => getAnimeFromTmdb()),
     settle("Internet Archive", () => getFilmsFromArchive()),
     settle("TheSportsDB", () => getEventsFromSportsDb()),
     settle("Twitch", () => getChannelsFromTwitch()),
+    ...filmGenreOrder.map((genre) => settle(`Internet Archive (${genre})`, () => getArchiveGenre(genre))),
   ]);
 
   // The Blender open movies stay in the indie rail: they're the titles with trailers.
@@ -63,6 +69,17 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
     indie: films ? [...openMovies, ...films] : titlesInNiche("indie"),
     gaming: channels ?? titlesInNiche("gaming"),
   };
+
+  // Genre rows skip films already shown above them, so the page doesn't repeat itself,
+  // and drop out when too few films are left to fill a row.
+  const shown = new Set(rails.indie.map((t) => t.id));
+  const genreRails: HomeCatalog["genreRails"] = [];
+  filmGenreOrder.forEach((genre, i) => {
+    const items: FilmTitle[] = (genreFilms[i] ?? []).filter((t) => !shown.has(t.id)).slice(0, 12);
+    if (items.length < MIN_GENRE_ROW) return;
+    for (const t of items) shown.add(t.id);
+    genreRails.push({ genre, items });
+  });
 
   // Billboard: the trailers first and last, each other niche's lead title between.
   const [firstTrailer, ...otherTrailers] = demoFeatured.filter((f) => f.trailer);
@@ -78,9 +95,10 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
       : [...demoTopTen];
 
   const titles = new Map<string, Title>();
-  for (const title of [...Object.values(rails).flat(), ...demoTitles]) {
+  const genreTitles = genreRails.flatMap((row) => row.items);
+  for (const title of [...Object.values(rails).flat(), ...genreTitles, ...demoTitles]) {
     if (!titles.has(title.id)) titles.set(title.id, title);
   }
 
-  return { rails, featured, topTen, titles: [...titles.values()] };
+  return { rails, featured, topTen, genreRails, titles: [...titles.values()] };
 }

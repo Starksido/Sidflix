@@ -101,6 +101,18 @@ export const niches: Record<
 
 export const nicheOrder: Niche[] = ["anime", "sports", "indie", "gaming"];
 
+/** Extra film rows shown under Indie films, each a slice of the Internet Archive. */
+export type FilmGenre = "silent" | "noir" | "scifi" | "comedy";
+
+export const filmGenres: Record<FilmGenre, { heading: string; description: string }> = {
+  silent: { heading: "Silent classics", description: "Pioneers of cinema, before films could talk." },
+  noir: { heading: "Film noir", description: "Shadows, rain and double crosses." },
+  scifi: { heading: "Classic sci fi", description: "Rockets, robots and visitors from other worlds." },
+  comedy: { heading: "Comedy classics", description: "Slapstick, screwball and the original funny business." },
+};
+
+export const filmGenreOrder: FilmGenre[] = ["silent", "noir", "scifi", "comedy"];
+
 /** Each niche's accent colour token. Lives here, not in a client module, so server pages can read it. */
 export const nicheHue: Record<Niche, string> = {
   anime: "var(--color-anime)",
@@ -532,6 +544,8 @@ export type HomeCatalog = {
   rails: Record<Niche, Title[]>;
   featured: { id: string; trailer?: Trailer }[];
   topTen: string[];
+  /** Genre rows of Archive films, after Indie films. Empty when the Archive is down. */
+  genreRails: { genre: FilmGenre; items: FilmTitle[] }[];
   /** Every title the client may need to resolve, including those in watch history. */
   titles: Title[];
 };

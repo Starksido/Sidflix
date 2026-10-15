@@ -1,4 +1,5 @@
 import { CatalogProvider } from "@/components/catalog-provider";
+import { FilmGenreRail } from "@/components/film-genre-rail";
 import { Hero } from "@/components/hero";
 import { ContinueWatchingRow, TopTenRow } from "@/components/home-rows";
 import { NicheCards } from "@/components/niche-cards";
@@ -6,6 +7,7 @@ import { NoticeToast } from "@/components/notice-toast";
 import { PlayerDialog } from "@/components/player-dialog";
 import { Rail } from "@/components/rail";
 import { SiteHeader } from "@/components/site-header";
+import { Fragment } from "react";
 import { nicheHue, nicheOrder, niches } from "@/lib/catalog";
 import { getHomeCatalog } from "@/lib/catalog-server";
 
@@ -23,15 +25,20 @@ export default async function Home() {
             <ContinueWatchingRow />
             <TopTenRow />
             {nicheOrder.map((niche) => (
-              <Rail
-                key={niche}
-                id={niche}
-                heading={niches[niche].heading}
-                description={niches[niche].description}
-                hue={nicheHue[niche]}
-              >
-                <NicheCards niche={niche} items={catalog.rails[niche]} />
-              </Rail>
+              <Fragment key={niche}>
+                <Rail
+                  id={niche}
+                  heading={niches[niche].heading}
+                  description={niches[niche].description}
+                  hue={nicheHue[niche]}
+                >
+                  <NicheCards niche={niche} items={catalog.rails[niche]} />
+                </Rail>
+                {niche === "indie" &&
+                  catalog.genreRails.map((row) => (
+                    <FilmGenreRail key={row.genre} genre={row.genre} items={row.items} />
+                  ))}
+              </Fragment>
             ))}
           </div>
         </main>

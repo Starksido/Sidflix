@@ -1,6 +1,6 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
-import type { FilmTitle } from "@/lib/catalog";
+import type { FilmGenre, FilmTitle } from "@/lib/catalog";
 import { artFromSeed, clip, fetchJson } from "@/lib/sources/util";
 
 // Feature films from the Internet Archive that carry an explicit public-domain
@@ -104,6 +104,23 @@ export async function getFilmsFromArchive(limit = 12): Promise<FilmTitle[]> {
   cacheLife("days");
   cacheTag("source:archive");
   return queryFilms(limit);
+}
+
+// Uploaders tag films with free-text subjects, so each genre matches the common
+// spellings. Silent films also have their own Archive collection.
+const GENRE_CLAUSES: Record<FilmGenre, string> = {
+  silent: '(collection:silent_films OR subject:silent OR subject:"silent film")',
+  noir: 'subject:(noir OR "film noir")',
+  scifi: 'subject:("science fiction" OR "sci-fi" OR "sci fi" OR scifi)',
+  comedy: "subject:(comedy OR comedies OR slapstick)",
+};
+
+/** Most-watched public-domain films in one genre. */
+export async function getArchiveGenre(genre: FilmGenre, limit = 16): Promise<FilmTitle[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("source:archive");
+  return queryFilms(limit, GENRE_CLAUSES[genre]);
 }
 
 /** Public-domain feature films whose title contains every word of the query. */
