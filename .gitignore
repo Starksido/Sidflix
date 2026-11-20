@@ -12,6 +12,20 @@
 
 # testing
 /coverage
+/.npm-cache/
+/data/library-added.json
+/data/library-added.json.*.tmp
+/data/anime-catalogue.json
+/data/anime-catalogue.json.*.tmp
+/data/tv-genres.json
+/data/tv-genres.json.*.tmp
+/data/tv-provider-index.json
+/data/tv-provider-index.json.*.tmp
+/data/accounts.sqlite*
+/artifacts/compression/
+/public/compression-trial/
+/artifacts/iptv/
+/artifacts/download-source-trial/
 
 # next.js
 /.next/

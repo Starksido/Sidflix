@@ -2,17 +2,18 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Artwork } from "@/components/artwork";
+import Link from "next/link";
+import { PlayIcon } from "@phosphor-icons/react";
 import { EventStatus, MaturityBadge } from "@/components/cards";
 import { useCatalog } from "@/components/catalog-provider";
 import {
   formatRuntime,
   formatViewers,
   isAllowed,
-  nicheHue,
-  niches,
   type Title,
 } from "@/lib/catalog";
 import { playTitle, useActiveProfile, useNowPlaying, useViewerState } from "@/lib/viewer-store";
+import { isVisibleInBrowse } from "@/lib/library-visibility";
 
 /** How long a feature without a trailer stays up before the carousel moves on. */
 const STILL_DURATION = "9s";
@@ -28,20 +29,13 @@ function subscribeVisibility(callback: () => void) {
   return () => document.removeEventListener("visibilitychange", callback);
 }
 
-const titleStyles: Record<Title["niche"], string> = {
-  anime: "font-display font-extrabold uppercase tracking-tight font-stretch-condensed text-5xl sm:text-6xl lg:text-7xl leading-[0.9]",
-  sports: "font-display font-bold tracking-tight font-stretch-condensed text-4xl sm:text-5xl lg:text-6xl leading-[0.95]",
-  indie: "font-serif italic text-6xl sm:text-7xl lg:text-8xl leading-[0.9]",
-  gaming: "font-display font-extrabold tracking-tight text-5xl sm:text-6xl lg:text-7xl leading-[0.9]",
-};
-
 export function Hero() {
   const { featured, getTitle } = useCatalog();
   const profile = useActiveProfile();
   const { watching } = useViewerState();
   const items = featured.flatMap((f) => {
     const title = getTitle(f.id);
-    return title && isAllowed(title.maturity, profile.maxMaturity) ? [{ ...f, title }] : [];
+    return title && isAllowed(title.maturity, profile.maxMaturity) && isVisibleInBrowse(title) ? [{ ...f, title }] : [];
   });
 
   const [index, setIndex] = useState(0);
@@ -103,17 +97,23 @@ export function Hero() {
     });
   }, [running, muted, trailer, current?.id]);
 
-  if (!current) return null;
+  if (!current) return <>
+    <section ref={sectionRef} id="top" aria-label="Featured" className="cinema-hero relative flex items-end overflow-hidden">
+      <div className="hero-copy"><p role="status" className="text-fg-muted">Featured titles are temporarily unavailable.</p><Link prefetch={false} href="/movies" className="hero-play mt-5 inline-flex h-11 items-center rounded-md px-6 text-sm font-semibold">Browse movies</Link></div>
+    </section>
+    <CategoryShortcuts />
+  </>;
   const { title } = current;
   const resuming = (watching[profile.id] ?? []).some((e) => e.titleId === title.id);
 
   return (
+    <>
     <section
       ref={sectionRef}
       id="top"
       aria-roledescription="carousel"
       aria-label="Featured"
-      className="relative flex min-h-[min(86svh,52rem)] items-end overflow-hidden md:min-h-[min(88vh,60rem)]"
+      className="cinema-hero relative flex items-end overflow-hidden"
     >
       <div key={title.id} className="animate-fade-in absolute inset-0 motion-reduce:animate-none">
         <Artwork title={title} fill eager sizes="100vw" />
@@ -143,55 +143,40 @@ export function Hero() {
 
       <div
         key={`copy-${title.id}`}
-        className="px-gutter animate-fade-in relative w-full pt-36 pb-14 motion-reduce:animate-none md:pb-20"
+        className="hero-copy animate-fade-in relative w-full motion-reduce:animate-none"
       >
         <div className="max-w-xl">
-          <p className="flex items-center gap-2 text-sm font-medium">
-            <span aria-hidden className="size-2 rounded-full" style={{ background: nicheHue[title.niche] }} />
-            {niches[title.niche].label}
-            {title.kind === "live" && title.isLive && (
+          <p className="hero-eyebrow flex items-center gap-2 text-sm font-medium">
+            SIDFLIX <span className="text-white/60">{title.kind === "tv-channel" ? "LIVE" : "SPOTLIGHT"}</span>
+            {((title.kind === "live" && title.isLive) || title.kind === "tv-channel") && (
               <span className="bg-live ml-1 rounded-sm px-1.5 py-0.5 text-[0.6875rem] font-semibold">Live</span>
             )}
           </p>
 
-          <h2 className={`mt-3 text-balance ${titleStyles[title.niche]}`}>{title.title}</h2>
+          <h2 className="hero-title mt-3 text-balance">{title.title}</h2>
 
           <div className="text-fg-muted mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <MaturityBadge maturity={title.maturity} />
             <HeroFacts title={title} />
           </div>
 
-          <p className="text-fg-muted mt-3 line-clamp-3 max-w-[34rem] text-base md:text-lg">{title.synopsis}</p>
+          <p className="hero-synopsis text-fg-muted mt-3 line-clamp-2 max-w-[34rem] text-sm md:text-base">{title.synopsis}</p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => playTitle(title)}
-              className="bg-accent text-accent-ink hover:bg-accent-hover flex h-12 items-center gap-2.5 rounded-md px-6 text-base font-semibold transition-colors"
+              className="hero-play flex h-11 items-center gap-2.5 rounded-md px-6 text-sm font-semibold transition-colors"
             >
-              <svg viewBox="0 0 20 20" aria-hidden className="size-4 fill-current">
-                <path d="M5 3.5v13l11-6.5z" />
-              </svg>
+              <PlayIcon size={18} weight="fill" aria-hidden />
               {primaryLabel(title, resuming)}
             </button>
           </div>
 
-          {(trailer || title.source) && (
-            <p className="text-fg-subtle mt-4 text-xs">
-              <a
-                href={trailer?.creditHref ?? title.source?.href}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-fg-muted underline-offset-2 hover:underline"
-              >
-                {trailer?.credit ?? `Via ${title.source?.label}`}
-              </a>
-            </p>
-          )}
         </div>
       </div>
 
-      <div className="px-gutter absolute inset-x-0 bottom-5 flex items-center justify-between gap-4 md:bottom-8">
+      <div className="hero-pagination absolute inset-x-0 bottom-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-1.5" role="group" aria-label="Choose a feature">
           {items.map((item, i) => {
             const active = i === index % items.length;
@@ -249,7 +234,15 @@ export function Hero() {
         </div>
       </div>
     </section>
+    <CategoryShortcuts />
+    </>
   );
+}
+
+function CategoryShortcuts() {
+  return <nav aria-label="Discover categories" className="category-strip scrollbar-none" data-remote-row>
+    {[["New & essential", "/movies"], ["Binge worthy", "/tv-shows"], ["Anime", "/anime"], ["Genres", "/#genres"], ["Live TV", "/#live-tv"], ["Indie films", "/#indie"]].map(([label, href]) => <Link prefetch={false} key={label} href={href}><span>{label}</span></Link>)}
+  </nav>;
 }
 
 function HeroFacts({ title }: { title: Title }) {
@@ -257,15 +250,15 @@ function HeroFacts({ title }: { title: Title }) {
     case "series":
       return (
         <>
-          <span>{title.year}</span>
+          {title.year !== null && <span>{title.year}</span>}
           <span>{title.seasons === 1 ? "1 season" : `${title.seasons} seasons`}</span>
         </>
       );
     case "film":
       return (
         <>
-          <span>{title.year}</span>
-          <span>{formatRuntime(title.minutes)}</span>
+          {title.year !== null && <span>{title.year}</span>}
+          {title.minutes !== null && <span>{formatRuntime(title.minutes)}</span>}
           {title.director && <span>Directed by {title.director}</span>}
         </>
       );
@@ -279,6 +272,8 @@ function HeroFacts({ title }: { title: Title }) {
           </span>
         </>
       );
+    case "tv-channel":
+      return <><span>{title.language}</span><span>{title.category === "movies" ? "Movie channel" : "Sports channel"}</span></>;
     case "channel":
       return (
         <>
@@ -290,7 +285,7 @@ function HeroFacts({ title }: { title: Title }) {
 }
 
 function primaryLabel(title: Title, resuming: boolean): string {
-  if (title.kind === "live") return "Watch live";
+  if (title.kind === "live" || title.kind === "tv-channel") return "Watch live";
   if (title.kind === "channel") return "Watch stream";
   return resuming ? "Resume" : "Play";
 }

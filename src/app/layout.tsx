@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import { AccountSession } from "@/components/account-session";
+import { RemoteNavigation } from "@/components/remote-navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +24,7 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: "Sidflix",
-  description: "Anime, live sports, indie films and gaming streams in one place.",
+  description: "Movies, TV shows, anime and live TV in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${bricolage.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col"><AccountSession /><RemoteNavigation />{children}</body>
     </html>
   );
 }

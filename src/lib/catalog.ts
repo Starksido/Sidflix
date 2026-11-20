@@ -3,6 +3,8 @@
 // Live sources in src/lib/sources replace a niche's demo titles when they respond;
 // these stay as the fallback and so seeded watch history still resolves.
 
+import type { GenreKey } from "@/lib/genres";
+
 export type Niche = "anime" | "sports" | "indie" | "gaming";
 
 export type Maturity = "all" | "7+" | "13+" | "16+";
@@ -26,22 +28,39 @@ type BaseTitle = {
   art: Art;
   /** Where the data comes from, for attribution. Absent on demo titles. */
   source?: { label: string; href: string };
+  /** First discovered by Sidflix; persisted independently of file modification dates. */
+  addedAt?: number;
+  /** TMDB interest and voting signals used for search, not streaming audience totals. */
+  searchSignals?: { popularity: number; rating: number; votes: number };
+  /** Catalogue genres; one title may belong to several sections. */
+  genres?: GenreKey[];
 };
 
 export type SeriesTitle = BaseTitle & {
   kind: "series";
-  year: number;
+  year: number | null;
   seasons: number;
-  episodeMinutes: number;
+  episodeMinutes: number | null;
+  /** Local series have actual playable episodes, ordered by season and episode. */
+  episodes?: FilmTitle[];
+  /** Listed in the remote provider's TV catalogue; seasons are loaded on demand. */
+  remote?: { provider: "vidspark"; tmdb: number };
 };
 
 export type FilmTitle = BaseTitle & {
   kind: "film";
-  year: number;
-  minutes: number;
+  /** Null when a local filename does not supply a release year. */
+  year: number | null;
+  /** Local videos learn their duration when playback starts. */
+  minutes: number | null;
   director?: string;
   /** Direct link to a video file, for films from your own library. */
   video?: string;
+  /** Stream through the local compatibility player (MKV, HEVC, etc.). */
+  local?: boolean;
+  /** Movie metadata is remote; the player offers supported external sources. */
+  remote?: { provider: "vidspark" | "embedwave" | "vidsrc"; tmdb: number; mediaType?: "movie" | "tv" };
+  episode?: { seriesId: string; seriesTitle: string; season: number; number: number; name: string };
 };
 
 export type LiveEvent = BaseTitle & {
@@ -64,10 +83,20 @@ export type Channel = BaseTitle & {
   twitchLogin?: string;
 };
 
-export type Title = SeriesTitle | FilmTitle | LiveEvent | Channel;
+export type TvChannel = BaseTitle & {
+  kind: "tv-channel";
+  category: "movies" | "sports";
+  streamUrls: string[];
+  country: string;
+  language: string;
+  logo?: string;
+  checkedAt: string;
+};
 
-/** Titles the player dialog can show: Twitch channels and Internet Archive films. */
-export type Playable = Channel | FilmTitle;
+export type Title = SeriesTitle | FilmTitle | LiveEvent | Channel | TvChannel;
+
+/** Titles the player dialog can show: channels, Archive films and library videos. */
+export type Playable = Channel | FilmTitle | TvChannel;
 
 export type Trailer = {
   src: string;
@@ -86,13 +115,13 @@ export const niches: Record<
   },
   sports: {
     label: "Live sports",
-    heading: "Live and upcoming",
-    description: "Matches in progress and kicking off today.",
+    heading: "Live and upcoming sports",
+    description: "Fixtures and scores. Watch available sports channels in Live TV.",
   },
   indie: {
     label: "Indie films",
     heading: "Indie films",
-    description: "Small crews, singular voices, and public-domain classics.",
+    description: "Singular voices, bold ideas and timeless cinema.",
   },
   gaming: {
     label: "Gaming",
@@ -101,7 +130,7 @@ export const niches: Record<
   },
 };
 
-export const nicheOrder: Niche[] = ["anime", "sports", "indie", "gaming"];
+export const nicheOrder: Niche[] = ["anime", "sports", "indie"];
 
 /** Extra film rows shown under Indie films, each a slice of the Internet Archive. */
 export type FilmGenre = "silent" | "noir" | "scifi" | "comedy";
@@ -543,11 +572,14 @@ export const topTen: TitleId[] = [
 
 /** Everything the home page renders, assembled on the server from live sources and demo data. */
 export type HomeCatalog = {
+  generatedAt: number;
   rails: Record<Niche, Title[]>;
   featured: { id: string; trailer?: Trailer }[];
   topTen: string[];
   /** Your own videos (src/lib/sources/library.ts). Empty when no library is linked. */
-  library: FilmTitle[];
+  library: (FilmTitle | SeriesTitle)[];
+  /** Checked movie and sports broadcasts from iptv-org. */
+  liveTv: TvChannel[];
   /** Genre rows of Archive films, after Indie films. Empty when the Archive is down. */
   genreRails: { genre: FilmGenre; items: FilmTitle[] }[];
   /** Every title the client may need to resolve, including those in watch history. */
@@ -563,10 +595,7 @@ export type Profile = {
 };
 
 export const profiles: Profile[] = [
-  { id: "sam", name: "Sam", maxMaturity: "16+", color: "#ffb224" },
-  { id: "amani", name: "Amani", maxMaturity: "16+", color: "#4cc9f0" },
-  { id: "leo", name: "Leo", maxMaturity: "13+", color: "#9b8cff" },
-  { id: "kids", name: "Kids", maxMaturity: "7+", color: "#ff5fa2", isKids: true },
+  { id: "sydo", name: "sydo", maxMaturity: "16+", color: "#72cefa" },
 ];
 
 export type WatchEntry = {
@@ -580,32 +609,8 @@ export type WatchEntry = {
   title?: Title;
 };
 
-/** Starting watch history per profile, before any local changes. */
-export const seedWatching: Record<string, WatchEntry[]> = {
-  sam: [
-    { titleId: "steel-bloom", progress: 0.64, season: 1, episode: 7 },
-    { titleId: "quiet-harbour", progress: 0.38 },
-    { titleId: "afterglow-rail", progress: 0.82, season: 2, episode: 3 },
-    { titleId: "ronin-exe", progress: 0.15, season: 1, episode: 2 },
-    { titleId: "what-the-river-kept", progress: 0.47 },
-  ],
-  amani: [
-    { titleId: "salt-and-saffron", progress: 0.52 },
-    { titleId: "hollow-moon-academy", progress: 0.71, season: 1, episode: 10 },
-    { titleId: "small-hours", progress: 0.23 },
-    { titleId: "lantern-street", progress: 0.33, season: 2, episode: 4 },
-  ],
-  leo: [
-    { titleId: "ninth-floor-dojo", progress: 0.4, season: 3, episode: 4 },
-    { titleId: "kitsune-delivery", progress: 0.88, season: 1, episode: 5 },
-    { titleId: "sintel", progress: 0.3 },
-  ],
-  kids: [
-    { titleId: "paper-comet", progress: 0.45, season: 1, episode: 6 },
-    { titleId: "big-buck-bunny", progress: 0.7 },
-    { titleId: "skyward-brass", progress: 0.12, season: 2, episode: 1 },
-  ],
-};
+/** A new personal profile starts without sample watch history. */
+export const seedWatching: Record<string, WatchEntry[]> = { sydo: [] };
 
 export function isAllowed(maturity: Maturity, max: Maturity): boolean {
   return maturityOrder.indexOf(maturity) <= maturityOrder.indexOf(max);

@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   experimental: {
     agentUpgrade: "security",
   },
+  serverExternalPackages: ["ffmpeg-static"],
+  // Account data and secrets are runtime state, never distributable build assets.
+  outputFileTracingExcludes: { "/*": ["./data/accounts.sqlite*", "./.env*"] },
+  outputFileTracingIncludes: { "/*": ["./data/tv-provider-index.json"] },
   // Artwork from the catalogue sources in src/lib/sources.
   images: {
     qualities: [75],

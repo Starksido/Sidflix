@@ -1,9 +1,11 @@
 "use client";
 
-import { ContinueCard, RankedCard } from "@/components/cards";
+import { RankedCard } from "@/components/cards";
+import { FeatureRail } from "@/components/feature-rail";
 import { useCatalog } from "@/components/catalog-provider";
 import { Rail } from "@/components/rail";
 import { isAllowed } from "@/lib/catalog";
+import { isVisibleInBrowse } from "@/lib/library-visibility";
 import { useActiveProfile, useViewerState } from "@/lib/viewer-store";
 
 export function ContinueWatchingRow() {
@@ -16,13 +18,13 @@ export function ContinueWatchingRow() {
       const title = getTitle(entry.titleId) ?? entry.title;
       return title ? [{ entry, title }] : [];
     })
-    .filter(({ title }) => isAllowed(title.maturity, profile.maxMaturity));
+    .filter(({ title }) => isAllowed(title.maturity, profile.maxMaturity) && isVisibleInBrowse(title));
 
   const heading = `Continue watching for ${profile.name}`;
 
   if (entries.length === 0) {
     return (
-      <section aria-labelledby="continue-heading" className="px-gutter">
+      <section id="continue" aria-labelledby="continue-heading" className="px-gutter scroll-mt-28">
         <h2 id="continue-heading" className="font-display text-xl font-semibold tracking-tight md:text-2xl">
           {heading}
         </h2>
@@ -34,11 +36,7 @@ export function ContinueWatchingRow() {
   }
 
   return (
-    <Rail id="continue" heading={heading}>
-      {entries.map(({ entry, title }) => (
-        <ContinueCard key={entry.titleId} entry={entry} title={title} />
-      ))}
-    </Rail>
+    <FeatureRail id="continue" heading={heading} items={entries.map(item => item.title)} entries={entries.map(item => item.entry)} />
   );
 }
 
@@ -48,6 +46,7 @@ export function TopTenRow() {
   const ranked = topTen
     .map((id) => getTitle(id))
     .filter((title) => title !== undefined)
+    .filter(isVisibleInBrowse)
     .filter((title) => isAllowed(title.maturity, profile.maxMaturity));
 
   return (

@@ -1,0 +1,116 @@
+{
+  "source": "https://iptv-org.github.io/iptv/categories/sports.m3u",
+  "channels": [
+    {
+      "id": "iptv-redbulltv-at",
+      "name": "Red Bull TV",
+      "country": "Austria",
+      "language": "English",
+      "urls": [
+        "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
+        "https://3ea22335.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWdiX1JlZEJ1bGxUVl9ITFM/playlist.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:04.648Z",
+      "logo": "/media-channels/iptv-redbulltv-at.png"
+    },
+    {
+      "id": "iptv-fueltv-pt",
+      "name": "FUEL TV",
+      "country": "Portugal",
+      "language": "English",
+      "urls": [
+        "https://amg01074-fueltv-fueltvemeaen-rakuten-b6j62.amagi.tv/hls/amagi_hls_data_rakutenAA-fueltvemeaen/CDN/master.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:10.152Z",
+      "logo": "/media-channels/iptv-fueltv-pt.png"
+    },
+    {
+      "id": "iptv-worldoffreesports-de",
+      "name": "World of Freesports",
+      "country": "Germany",
+      "language": "English",
+      "urls": [
+        "https://mainstreammedia-worldoffreesportsintl-rakuten.amagi.tv/playlist.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:11.754Z",
+      "logo": "/media-channels/iptv-worldoffreesports-de.png"
+    },
+    {
+      "id": "iptv-fifaplus-uk",
+      "name": "FIFA+",
+      "country": "United States",
+      "language": "English",
+      "urls": [
+        "https://d2w9q46ikgrcwx.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-of5cbk3sav3w5/v1/sysdata_s_p_a_fifa_7/samsungheadend_us/latest/main/hls/playlist.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:18.171Z",
+      "logo": "/media-channels/iptv-fifaplus-uk.png"
+    },
+    {
+      "id": "iptv-fifapluswomen-uk",
+      "name": "FIFA+ Women",
+      "country": "United Kingdom",
+      "language": "English",
+      "urls": [
+        "https://cffda8ff.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/U2Ftc3VuZy1nYl9GSUZBUGx1c3dvbWVuX0hMUw/playlist.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:20.833Z",
+      "logo": "/media-channels/iptv-fifapluswomen-uk.png"
+    },
+    {
+      "id": "iptv-cricketgold-au",
+      "name": "Cricket Gold",
+      "country": "Australia",
+      "language": "English",
+      "urls": [
+        "https://streams2.sofast.tv/ptnr-yupptv/title-cricketgold/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/b2048bb8-1686-4432-aa50-647245383e0c/manifest.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:24.544Z",
+      "logo": "/media-channels/iptv-cricketgold-au.png"
+    },
+    {
+      "id": "iptv-floracing-us",
+      "name": "FloRacing",
+      "country": "United States",
+      "language": "English",
+      "urls": [
+        "https://amg02278-amg02278c1-flosports-worldwide-7592.playouts.now.amagi.tv/playlist.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:25.859Z",
+      "logo": "/media-channels/iptv-floracing-us.png"
+    },
+    {
+      "id": "iptv-accdigitalnetwork-us",
+      "name": "ACC Digital Network",
+      "country": "United States",
+      "language": "English",
+      "urls": [
+        "https://raycom-accdn-firetv.amagi.tv/playlist.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:26.820Z",
+      "logo": "/media-channels/iptv-accdigitalnetwork-us.png"
+    },
+    {
+      "id": "iptv-strongman-us",
+      "name": "Strongman",
+      "country": "United Kingdom",
+      "language": "English",
+      "urls": [
+        "https://rightsboosterltd-scl-1-eu.rakuten.wurl.tv/playlist.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:30.613Z",
+      "logo": "/media-channels/iptv-strongman-us.png"
+    },
+    {
+      "id": "iptv-africa24sport-fr",
+      "name": "Africa 24 Sport",
+      "country": "France",
+      "language": "French",
+      "urls": [
+        "https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8"
+      ],
+      "checkedAt": "2026-11-12T13:56:34.557Z",
+      "logo": "/media-channels/iptv-africa24sport-fr.png"
+    }
+  ]
+}

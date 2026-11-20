@@ -2,7 +2,6 @@ import "server-only";
 import { cacheLife } from "next/cache";
 import {
   demoTitles,
-  featured as demoFeatured,
   filmGenreOrder,
   titlesInNiche,
   topTen as demoTopTen,
@@ -15,7 +14,10 @@ import { getArchiveGenre, getFilmsFromArchive } from "@/lib/sources/archive";
 import { getLibraryFilms } from "@/lib/sources/library";
 import { getEventsFromSportsDb } from "@/lib/sources/sportsdb";
 import { getAnimeFromTmdb } from "@/lib/sources/tmdb";
-import { getChannelsFromTwitch } from "@/lib/sources/twitch";
+import { groupLibrary } from "@/lib/library-groups";
+import { getLiveTvChannels } from "@/lib/sources/iptv";
+import { getOnlineMovies } from "@/lib/sources/online-movies";
+import { SHOW_LOCAL_LIBRARY } from "@/lib/library-visibility";
 
 /**
  * Runs a source; null when it is unconfigured, empty or failing, so the home page's
@@ -53,12 +55,13 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
   // Bounds how long a failed source keeps its niche on demo titles.
   cacheLife("minutes");
 
-  const [library, anime, films, events, channels, ...genreFilms] = await Promise.all([
-    settle("Your library", () => getLibraryFilms()),
+  const [library, anime, films, events, onlineMovies, ...genreFilms] = await Promise.all([
+    // Keep the configured paths, but do not scan/serialize a library hidden from browsing.
+    SHOW_LOCAL_LIBRARY ? settle("Your library", () => getLibraryFilms()) : Promise.resolve(null),
     settle("TMDB", () => getAnimeFromTmdb()),
     settle("Internet Archive", () => getFilmsFromArchive()),
     settle("TheSportsDB", () => getEventsFromSportsDb()),
-    settle("Twitch", () => getChannelsFromTwitch()),
+    settle("Featured movies", async () => (await getOnlineMovies(1, "popular", "")).items),
     ...filmGenreOrder.map((genre) => settle(`Internet Archive (${genre})`, () => getArchiveGenre(genre))),
   ]);
 
@@ -66,10 +69,10 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
   const openMovies = demoTitles.filter((t) => t.id === "sintel" || t.id === "big-buck-bunny");
 
   const rails: Record<Niche, Title[]> = {
-    anime: anime ?? titlesInNiche("anime"),
-    sports: events ?? titlesInNiche("sports"),
+    anime: anime ?? [],
+    sports: events ?? [],
     indie: films ? [...openMovies, ...films] : titlesInNiche("indie"),
-    gaming: channels ?? titlesInNiche("gaming"),
+    gaming: [],
   };
 
   // Genre rows skip films already shown above them, so the page doesn't repeat itself,
@@ -83,12 +86,14 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
     genreRails.push({ genre, items });
   });
 
-  // Billboard: the trailers first and last, each other niche's lead title between.
-  const [firstTrailer, ...otherTrailers] = demoFeatured.filter((f) => f.trailer);
-  const leads = [rails.anime[0], rails.sports[0], rails.gaming[0]]
+  // Render real catalogue features in the initial HTML, before browser hydration.
+  // The original Blender demo trailers must never act as a loading placeholder.
+  const liveTv = getLiveTvChannels();
+  const featureMovies = (onlineMovies ?? []).filter(title => title.art.image?.backdrop).slice(0, 5);
+  const leads = [rails.anime[0], liveTv[0]]
     .filter((t) => t !== undefined)
     .map((t) => ({ id: t.id }));
-  const featured = [firstTrailer, ...leads, ...otherTrailers];
+  const featured = featureMovies.length ? featureMovies.map(title => ({ id: title.id })) : leads;
 
   // Ranked by each source's own popularity signal when live data exists.
   const topTen =
@@ -98,9 +103,11 @@ export async function getHomeCatalog(): Promise<HomeCatalog> {
 
   const titles = new Map<string, Title>();
   const genreTitles = genreRails.flatMap((row) => row.items);
-  for (const title of [...(library ?? []), ...Object.values(rails).flat(), ...genreTitles, ...demoTitles]) {
+  for (const title of [...(library ?? []), ...featureMovies, ...liveTv, ...Object.values(rails).flat(), ...genreTitles, ...demoTitles]) {
     if (!titles.has(title.id)) titles.set(title.id, title);
   }
 
-  return { rails, featured, topTen, library: library ?? [], genreRails, titles: [...titles.values()] };
+  const groupedLibrary = groupLibrary(library ?? []);
+  for (const title of groupedLibrary) titles.set(title.id, title);
+  return { generatedAt: Date.now(), rails, featured, topTen, library: groupedLibrary, liveTv, genreRails, titles: [...titles.values()] };
 }

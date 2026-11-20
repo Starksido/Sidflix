@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import Image from "next/image";
 import { Artwork } from "@/components/artwork";
 import {
   formatRuntime,
@@ -9,6 +10,7 @@ import {
   runtimeMinutes,
   type Channel,
   type LiveEvent,
+  type TvChannel,
   type Niche,
   type Title,
   type WatchEntry,
@@ -16,7 +18,7 @@ import {
 import { playTitle, removeFromWatching, useIsAllowed } from "@/lib/viewer-store";
 
 const frame =
-  "relative overflow-hidden rounded-lg bg-surface-2 ring-1 ring-white/10 transition-shadow duration-200 group-hover:ring-2 group-hover:ring-(--hue) group-focus-visible:ring-2 group-focus-visible:ring-(--hue)";
+  "relative overflow-hidden rounded-lg bg-surface-2 ring-1 ring-white/10 transition-shadow duration-200 group-hover:ring-2 group-hover:ring-white group-focus-visible:ring-2 group-focus-visible:ring-white";
 
 function hueStyle(niche: Niche) {
   return { "--hue": nicheHue[niche] } as CSSProperties;
@@ -58,6 +60,7 @@ function PlayGlyph() {
   return (
     <span
       aria-hidden
+      data-remote-skip
       className="absolute top-1/2 left-1/2 grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
     >
       <svg viewBox="0 0 20 20" className="ml-0.5 size-4 fill-current">
@@ -71,16 +74,17 @@ function titleDetails(title: Title): ReactNode {
   if (title.kind === "series") {
     return (
       <>
-        <span>{title.year}</span>
-        <span>{title.seasons === 1 ? "1 season" : `${title.seasons} seasons`}</span>
+        {title.year !== null && <span>{title.year}</span>}
+        {title.seasons > 0 && <span>{title.seasons === 1 ? "1 season" : `${title.seasons} seasons`}</span>}
+        {title.episodes && <span>{title.episodes.length} episodes</span>}
       </>
     );
   }
   if (title.kind === "film") {
     return (
       <>
-        <span>{title.year}</span>
-        <span>{formatRuntime(title.minutes)}</span>
+        {title.year !== null && <span>{title.year}</span>}
+        {title.minutes !== null && <span>{formatRuntime(title.minutes)}</span>}
       </>
     );
   }
@@ -93,15 +97,16 @@ export function PosterCard({ title }: { title: Title }) {
     <li className="w-[38vw] max-w-44 shrink-0 snap-start sm:w-40 lg:w-44" style={hueStyle(title.niche)}>
       <button
         type="button"
+        data-title-button={title.id}
         onClick={() => playTitle(title)}
         className="group block w-full rounded-lg text-left focus-visible:outline-none"
       >
-        <div className={frame}>
+        <div className={`${frame} sidflix-cover-frame`}>
           <Artwork title={title} showTitle shape="poster" className="aspect-5/7" />
           <PlayGlyph />
         </div>
         <p className="mt-2 truncate text-sm font-medium">
-          <span className="sr-only">Play </span>
+          <span className="sr-only">{title.kind === "series" && (title.episodes || title.remote) ? "Browse episodes of " : "Play "}</span>
           {title.title}
         </p>
         <Meta>
@@ -127,13 +132,14 @@ export function RankedCard({ title, rank }: { title: Title; rank: number }) {
       </span>
       <button
         type="button"
+        data-title-button={title.id}
         onClick={() => playTitle(title)}
         className="group relative w-28 rounded-lg text-left focus-visible:outline-none md:w-36"
       >
         <span className="sr-only">
           Number {rank}: play {title.title}
         </span>
-        <div className={frame}>
+        <div className={`${frame} sidflix-cover-frame`}>
           <Artwork title={title} showTitle shape="poster" sizes="(min-width: 60rem) 9rem, 7rem" className="aspect-5/7" />
           <PlayGlyph />
         </div>
@@ -161,10 +167,11 @@ export function LiveCard({ event }: { event: LiveEvent }) {
     <li className="w-[78vw] max-w-96 shrink-0 snap-start sm:w-80 lg:w-96" style={hueStyle("sports")}>
       <button
         type="button"
+        data-title-button={event.id}
         onClick={() => playTitle(event)}
         className="group block w-full rounded-lg text-left focus-visible:outline-none"
       >
-        <div className={frame}>
+        <div className={`${frame} sidflix-cover-frame`}>
           <Artwork title={event} className="aspect-video" />
           <div className="absolute top-2.5 left-2.5 flex gap-1.5">
             <LiveBadge live={event.isLive}>{event.isLive ? "Live" : <EventStatus event={event} />}</LiveBadge>
@@ -190,16 +197,36 @@ export function LiveCard({ event }: { event: LiveEvent }) {
   );
 }
 
+export function TvChannelCard({ channel }: { channel: TvChannel }) {
+  if (!useIsAllowed(channel.maturity)) return null;
+  return (
+    <li className="w-[70vw] max-w-80 shrink-0 snap-start sm:w-72 lg:w-80" style={hueStyle(channel.niche)}>
+      <button type="button" data-title-button={channel.id} onClick={() => playTitle(channel)} aria-label={`Watch ${channel.title}`}
+        className="group block w-full rounded-lg text-left focus-visible:outline-none">
+        <div className={`${frame} sidflix-cover-frame grid aspect-video place-items-center bg-linear-to-br ${channel.category === "movies" ? "from-amber-950 to-slate-950" : "from-emerald-950 to-slate-950"}`}>
+          {channel.logo ? <Image src={channel.logo} alt="" width={180} height={90} className="h-20 w-44 object-contain" />
+            : <span className="font-display px-6 text-center text-3xl font-bold">{channel.title}</span>}
+          <div className="absolute top-2.5 left-2.5"><LiveBadge live>Live TV</LiveBadge></div>
+          <PlayGlyph />
+        </div>
+        <p className="mt-2 truncate text-sm font-medium">{channel.title}</p>
+        <Meta><span>{channel.category === "movies" ? "Movies" : "Sports"}</span><span>{channel.language}</span></Meta>
+      </button>
+    </li>
+  );
+}
+
 export function ChannelCard({ channel }: { channel: Channel }) {
   if (!useIsAllowed(channel.maturity)) return null;
   return (
     <li className="w-[70vw] max-w-80 shrink-0 snap-start sm:w-72 lg:w-80" style={hueStyle("gaming")}>
       <button
         type="button"
+        data-title-button={channel.id}
         onClick={() => playTitle(channel)}
         className="group block w-full rounded-lg text-left focus-visible:outline-none"
       >
-        <div className={frame}>
+        <div className={`${frame} sidflix-cover-frame`}>
           <Artwork title={channel} showTitle className="aspect-video" />
           <div className="absolute top-2.5 left-2.5 flex gap-1.5">
             <LiveBadge live>Live</LiveBadge>
@@ -239,10 +266,11 @@ export function ContinueCard({ entry, title }: { entry: WatchEntry; title: Title
     <li className="group/card relative w-[70vw] max-w-80 shrink-0 snap-start sm:w-72 lg:w-80" style={hueStyle(title.niche)}>
       <button
         type="button"
+        data-title-button={title.id}
         onClick={() => playTitle(title)}
         className="group block w-full rounded-lg text-left focus-visible:outline-none"
       >
-        <div className={frame}>
+        <div className={`${frame} sidflix-cover-frame`}>
           <Artwork title={title} showTitle className="aspect-video" />
           <PlayGlyph />
           <div
@@ -253,7 +281,7 @@ export function ContinueCard({ entry, title }: { entry: WatchEntry; title: Title
             aria-valuemax={100}
             className="absolute inset-x-0 bottom-0 h-1 bg-white/25"
           >
-            <div className="bg-accent h-full transition-[width] duration-500" style={{ width: `${percent}%` }} />
+            <div className="bg-playback h-full transition-[width] duration-500" style={{ width: `${percent}%` }} />
           </div>
         </div>
         <p className="mt-2 truncate text-sm font-medium">

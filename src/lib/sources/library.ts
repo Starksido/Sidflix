@@ -2,10 +2,11 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { maturityOrder, type FilmTitle, type Maturity } from "@/lib/catalog";
 import { artFromSeed, clip, fetchJson } from "@/lib/sources/util";
+import { getLocalMedia } from "@/lib/local-media";
+import { addLibraryArtwork } from "@/lib/library-artwork";
 
-// Your own videos, listed in a videos.json file in a GitHub repository you control.
-// Set LIBRARY_MANIFEST_URL to that file's raw URL; without it the library row is hidden.
-// The file's format is documented in the sidflix-videos template's README.
+// Your own videos from configured local folders and an optional remote videos.json.
+// LIBRARY_MANIFEST_URL points at the manifest; LOCAL_MEDIA_ROOTS configures local files.
 
 /** Catalogue ids for library videos are the manifest id with this prefix. */
 const ID_PREFIX = "lib-";
@@ -83,9 +84,9 @@ function toTitle(entry: Entry): FilmTitle | string {
  * Every valid video in your manifest, in the order listed. Null when no manifest is
  * linked. Invalid entries are skipped with a warning, so one typo doesn't hide the row.
  */
-export async function getLibraryFilms(): Promise<FilmTitle[] | null> {
+async function getManifestFilms(): Promise<FilmTitle[] | null> {
   "use cache";
-  // New videos appear within the hour; restart the dev server to see them at once.
+  // Remote manifest changes appear within the hour; local folders use a shorter cache.
   cacheLife("hours");
   cacheTag("source:library");
 
@@ -110,4 +111,19 @@ export async function getLibraryFilms(): Promise<FilmTitle[] | null> {
     }
   }
   return films;
+}
+
+/** Local folders and the optional remote manifest contribute independently. */
+export async function getLibraryFilms(): Promise<FilmTitle[] | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("source:library");
+  const [local, remote] = await Promise.allSettled([getLocalMedia(), getManifestFilms()]);
+  if (local.status === "rejected") console.warn("[library] local folders unavailable:", local.reason);
+  if (remote.status === "rejected") console.warn("[library] manifest unavailable:", remote.reason);
+  const films = [
+    ...(local.status === "fulfilled" ? local.value.map((file) => file.title) : []),
+    ...(remote.status === "fulfilled" ? remote.value ?? [] : []),
+  ];
+  return films.length ? addLibraryArtwork(films) : null;
 }

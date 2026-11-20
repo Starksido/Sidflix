@@ -2,6 +2,8 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { Maturity, SeriesTitle } from "@/lib/catalog";
 import { artFromSeed, clip, fetchJson } from "@/lib/sources/util";
+import { readSearchSignals } from "@/lib/search-relevance";
+import { getVidSparkShows } from "@/lib/sources/online-shows";
 
 // Anime metadata and artwork from TMDB. Required notice (shown in the footer):
 // "This product uses the TMDB API but is not endorsed or certified by TMDB."
@@ -23,6 +25,9 @@ type TvDetails = {
   last_episode_to_air?: { runtime?: number | null } | null;
   poster_path?: string | null;
   backdrop_path?: string | null;
+  popularity?: number;
+  vote_average?: number;
+  vote_count?: number;
   content_ratings?: { results: { iso_3166_1: string; rating: string }[] };
 };
 
@@ -56,7 +61,7 @@ function toTitle(tv: TvDetails): SeriesTitle | null {
   if (!tv.overview || !tv.poster_path) return null;
   const rating = tv.content_ratings?.results.find((r) => r.iso_3166_1 === "US")?.rating;
   return {
-    id: `tmdb-tv-${tv.id}`,
+    id: `online-tv-${tv.id}`,
     kind: "series",
     title: tv.name,
     niche: "anime",
@@ -65,6 +70,8 @@ function toTitle(tv: TvDetails): SeriesTitle | null {
     seasons: tv.number_of_seasons || 1,
     episodeMinutes: tv.episode_run_time?.[0] || tv.last_episode_to_air?.runtime || 24,
     synopsis: clip(tv.overview, 220),
+    searchSignals: readSearchSignals({ popularity: tv.popularity, vote_average: tv.vote_average, vote_count: tv.vote_count }),
+    remote: { provider: "vidspark", tmdb: tv.id },
     art: {
       ...artFromSeed(tv.name),
       image: {
@@ -85,15 +92,16 @@ export async function getAnimeFromTmdb(limit = 12): Promise<SeriesTitle[] | null
   const key = process.env.TMDB_API_KEY;
   if (!key) return null;
 
-  const discover = (await request(
+  const [raw, providerRows] = await Promise.all([request(
     "/discover/tv?with_genres=16&with_original_language=ja&sort_by=popularity.desc&include_adult=false&vote_count.gte=50",
     key,
-  )) as DiscoverResponse;
+  ), getVidSparkShows()]);
+  const discover = raw as DiscoverResponse, listed = new Set(providerRows.map(row => row.tmdb));
 
-  const details = await Promise.all(discover.results.slice(0, limit + 4).map((r) => getTvDetails(r.id, key)));
+  const details = await Promise.all(discover.results.filter(row => listed.has(row.id)).slice(0, limit + 4).map((r) => getTvDetails(r.id, key).catch(() => null)));
 
   return details
-    .map(toTitle)
+    .map(tv => tv ? toTitle(tv) : null)
     .filter((t) => t !== null)
     .slice(0, limit);
 }
@@ -107,14 +115,15 @@ export async function searchAnimeOnTmdb(query: string, limit = 8): Promise<Serie
   const key = process.env.TMDB_API_KEY;
   if (!key) return null;
 
-  const search = (await request(
+  const [raw, providerRows] = await Promise.all([request(
     `/search/tv?query=${encodeURIComponent(query)}&include_adult=false`,
     key,
-  )) as SearchResponse;
+  ), getVidSparkShows()]);
+  const search = raw as SearchResponse, listed = new Set(providerRows.map(row => row.tmdb));
 
   // Same niche as the anime rail. Search results have no rating, so each needs its details.
-  const anime = search.results.filter((r) => r.genre_ids.includes(16) && r.original_language === "ja");
-  const details = await Promise.all(anime.slice(0, limit).map((r) => getTvDetails(r.id, key)));
+  const anime = search.results.filter((r) => r.genre_ids.includes(16) && r.original_language === "ja" && listed.has(r.id));
+  const details = await Promise.all(anime.slice(0, limit).map((r) => getTvDetails(r.id, key).catch(() => null)));
 
-  return details.map(toTitle).filter((t) => t !== null);
+  return details.map(tv => tv ? toTitle(tv) : null).filter((t) => t !== null);
 }

@@ -11,6 +11,7 @@ type RailProps = {
   /** Gap between items, as a Tailwind class. */
   gapClassName?: string;
   children: ReactNode;
+  controls?: ReactNode;
 };
 
 export function Rail({
@@ -20,6 +21,7 @@ export function Rail({
   hue,
   gapClassName = "gap-3 md:gap-4",
   children,
+  controls,
 }: RailProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
@@ -68,8 +70,10 @@ export function Rail({
           <PageButton label="Scroll forward" disabled={edges.end} onClick={() => page(1)} />
         </div>
       </div>
+      {controls && <div className="px-gutter mb-4">{controls}</div>}
       <ul
         ref={listRef}
+        data-remote-row
         className={`px-gutter scroll-px-gutter scrollbar-none relative flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain pt-1 pb-2 ${gapClassName}`}
       >
         {children}
@@ -92,6 +96,7 @@ function PageButton({
   return (
     <button
       type="button"
+      data-remote-skip
       aria-label={label}
       disabled={disabled}
       onClick={onClick}

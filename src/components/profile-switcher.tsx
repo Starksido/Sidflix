@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { profiles, type Profile } from "@/lib/catalog";
-import { switchProfile, useActiveProfile } from "@/lib/viewer-store";
+import type { Profile } from "@/lib/catalog";
+import { switchProfile, useActiveProfile, useProfiles } from "@/lib/viewer-store";
+import { authClient } from "@/lib/auth-client";
+import Link from "next/link";
 
 export function Avatar({ profile, size = "sm" }: { profile: Profile; size?: "sm" | "md" }) {
   return (
@@ -20,6 +22,9 @@ export function Avatar({ profile, size = "sm" }: { profile: Profile; size?: "sm"
 
 export function ProfileSwitcher() {
   const active = useActiveProfile();
+  const profiles = useProfiles();
+  const { data: session, isPending } = authClient.useSession();
+  const [accountError, setAccountError] = useState("");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -45,7 +50,7 @@ export function ProfileSwitcher() {
   };
 
   const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const items = [...(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitemradio]") ?? [])];
+    const items = [...(menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]") ?? [])];
     const index = items.indexOf(document.activeElement as HTMLElement);
     const focusAt = (i: number) => items[(i + items.length) % items.length]?.focus();
 
@@ -81,6 +86,7 @@ export function ProfileSwitcher() {
       <button
         ref={buttonRef}
         type="button"
+        aria-label={`${active.name}, profile menu`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -95,7 +101,7 @@ export function ProfileSwitcher() {
       >
         <Avatar profile={active} />
         <span className="hidden text-sm font-medium sm:inline">{active.name}</span>
-        <span className="sr-only">, switch profile</span>
+        <span className="sr-only">, profile menu</span>
         <svg
           viewBox="0 0 20 20"
           aria-hidden
@@ -110,11 +116,11 @@ export function ProfileSwitcher() {
           ref={menuRef}
           id={menuId}
           role="menu"
-          aria-label="Switch profile"
+          aria-label="Your profile"
           onKeyDown={onMenuKeyDown}
-          className="bg-surface-1/95 absolute top-full right-0 mt-2 w-60 rounded-xl p-1.5 shadow-2xl shadow-black/60 ring-1 ring-white/10 backdrop-blur-md"
+          className="bg-surface-1/95 absolute top-full left-0 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-xl p-1.5 shadow-2xl shadow-black/60 ring-1 ring-white/10 backdrop-blur-md"
         >
-          <p className="text-fg-subtle px-2.5 pt-1.5 pb-2 text-xs">Who&apos;s watching?</p>
+          <p className="text-fg-subtle px-2.5 pt-1.5 pb-2 text-xs">Your profile</p>
           {profiles.map((profile) => {
             const checked = profile.id === active.id;
             return (
@@ -134,7 +140,7 @@ export function ProfileSwitcher() {
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium">{profile.name}</span>
                   <span className="text-fg-subtle block text-xs">
-                    {profile.isKids ? "Kids profile, all ages and 7+" : `Up to ${profile.maxMaturity}`}
+                    Your watch history and preferences
                   </span>
                 </span>
                 {checked && (
@@ -145,6 +151,16 @@ export function ProfileSwitcher() {
               </button>
             );
           })}
+          <div className="mt-1 border-t border-white/10 pt-1">
+            <Link role="menuitem" prefetch={false} href="/downloads" onClick={() => close(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10">Downloads</Link>
+            {session ? <><Link role="menuitem" href="/#recommended" onClick={() => close(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10">Your recommendations</Link>
+              <button role="menuitem" type="button" onClick={async () => {
+                const result = await authClient.signOut();
+                if (result.error) setAccountError("Couldn’t sign out. Please try again."); else close(false);
+              }} className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/10">Sign out</button></>
+              : <Link role="menuitem" href="/account" onClick={() => close(false)} className="block rounded-lg px-3 py-2 text-sm text-accent hover:bg-white/10">{isPending ? "Your account" : "Sign in or create an account"}</Link>}
+            {accountError && <p role="alert" className="px-3 py-2 text-xs text-fg-muted">{accountError}</p>}
+          </div>
         </div>
       )}
     </div>
